@@ -5,12 +5,15 @@
 
 To summarize the inner workings of `sbx`, a call to `sbx.vm()` is made passing the untrusted code to run along with optional context options and callback. A process is forked and a `once` event listener is started on both the parent and child. The child process then builds a context using the options provided and the untrusted code is wrapped in a try/catch to to capture any exceptions for debugging. The untrusted code is then run using the context it built with an optional timeout. Upon completion, the context is sent back to the parent as a message and exists. If a callback was specified, the message is passed as the only argument to the callback. The end.
 
+* See the [WIKI](https://github.com/bhoriuchi/sbx/wiki) for full documentation
+* And the [Change Log](https://github.com/bhoriuchi/sbx/wiki/Change-Log) for what's new
+
 ---
 <br>
 
 ## Documentation
 ---
-### `sbx.vm`( `code`, [`modules`], [`variables`], [`timeout`], [`callback`] )
+#### `sbx.vm`( `code`, [`modules`], [`variables`], [`timeout`], [`callback`] )
 
 * `code` [`String`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String) - string of Javascript to run.
 * [`modules`] [`String[]`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) - Array of module names for the VM to require
@@ -24,7 +27,7 @@ To summarize the inner workings of `sbx`, a call to `sbx.vm()` is made passing t
 ---
 ```js
 // require sbx
-var sbx     = require('sbx');
+var sbx       = require('sbx');
 
 // set options
 var code      = 'x++; console.log(\'I like the number\', x);'
