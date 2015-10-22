@@ -61,7 +61,7 @@ var callback  = function(context) {
 };
 
 // call the vm method passing the code and options in any order
-sbx.vm(code, variables, timeout, callback);
+sbx.vm(code, variables, timeout, callback, false);
 
 // > The value of x = [1, 2, 3, 4, 5, 6]
 
