@@ -10,14 +10,13 @@
 var sbx = require('../lib/sbx');
 
 
-var source    = 'var x = 20; console.log(\'Printing value of x from the child process, x =\', x);';
-//var source = 'while(true){}';
+var source = 'var _ = require(\'lodash\');var x = 20; console.log(\'Printing value of x from the child process, x =\', x);x = _.uniq([1,2,3,3,2,2,4]);';
+source     = 'var fn = function() {var rx = new RegExp(/.*/); var y = "hi".match(rx); return {rx: rx, y: y};}; var f = fn();';
 
 
 // set up the arguments
 var timeout   = 500;
 var variables = { hello: 'Hello World!' };
-var modules   = ['console', 'setTimeout'];
 var callback  = function(reply) {
 	
 	console.log('Access the context object, x = ', reply.x);
@@ -25,7 +24,7 @@ var callback  = function(reply) {
 };
 
 // call the vm function and pass the arguments
-sbx.vm(source, modules, callback, variables, timeout, true);
+sbx.vm(source, callback, variables, timeout, false);
 
 // set a timeout for testing
 setTimeout(function() {

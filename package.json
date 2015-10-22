@@ -1,6 +1,6 @@
 {
   "name": "sbx",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Run untrusted code as a VM in a child process",
   "main": "lib/sbx.js",
   "repository": {
@@ -8,7 +8,14 @@
     "url": "git+https://github.com/bhoriuchi/sbx.git"
   },
   "keywords": [
-    "sandbox"
+    "sandbox",
+    "untrusted",
+    "fork",
+    "process",
+    "child",
+    "require",
+    "modules",
+    "context"
   ],
   "author": "Branden Horiuchi <bhoriuchi@gmail.com>",
   "license": "MIT",
@@ -17,6 +24,7 @@
     "url": "https://github.com/bhoriuchi/sbx/issues"
   },
   "dependencies": {
+    "lodash": "*"
   },
   "scripts": {
     "test": "echo \\\"Error: no test specified\\\" && exit 1"
