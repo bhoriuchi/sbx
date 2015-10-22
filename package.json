@@ -24,7 +24,6 @@
     "url": "https://github.com/bhoriuchi/sbx/issues"
   },
   "dependencies": {
-    "lodash": "*"
   },
   "scripts": {
     "test": "echo \\\"Error: no test specified\\\" && exit 1"
