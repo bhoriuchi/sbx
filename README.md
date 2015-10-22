@@ -13,13 +13,13 @@ To summarize the inner workings of `sbx`, a call to `sbx.vm()` is made passing t
 
 ## Documentation
 ---
-#### `sbx.vm`( `code`, [`modules`], [`variables`], [`timeout`], [`callback`] )
+#### `sbx.vm`( `code`, [`variables`], [`timeout`], [`callback`], [`lockdown`] )
 
 * `code` [`String`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String) - string of Javascript to run.
-* [`modules`] [`String[]`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) - Array of module names for the VM to require
 * [`variables`] [`Object`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object) - A hash of variables ( `{name : value}` )
 * [`timeout`] [`Number`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number) - Time in miliseconds before the VM times out
 * [`callback`] [`Function`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function) - A function to call passing the final context of the VM
+* [`lockdown=true`] [`Boolean`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) - If false, require statements will be allowed in order to use external modules
 
 ---
 <br>
@@ -31,7 +31,6 @@ var sbx       = require('sbx');
 
 // set options
 var code      = 'x++; console.log(\'I like the number\', x);'
-var modules   = ['console'];
 var variables = { x: 7 };
 var timeout   = 100;
 var callback  = function(context) {
@@ -39,10 +38,32 @@ var callback  = function(context) {
 };
 
 // call the vm method passing the code and options in any order
-sbx.vm(code, modules, variables, timeout, callback);
+sbx.vm(code, variables, timeout, callback);
 
 // > I like the number 8
 // > The value of x = 8
+
+```
+
+<br>
+## Example with external module
+---
+```js
+// require sbx
+var sbx       = require('sbx');
+
+// set options
+var code      = 'var _ = require("lodash"); x = _.uniq(x);'
+var variables = { x: [1,1,2,2,3,4,5,6,6] };
+var timeout   = 100;
+var callback  = function(context) {
+  console.log('The value of x = ', context.x);
+};
+
+// call the vm method passing the code and options in any order
+sbx.vm(code, variables, timeout, callback);
+
+// > The value of x = [1, 2, 3, 4, 5, 6]
 
 ```
 
