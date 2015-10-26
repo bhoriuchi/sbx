@@ -13,6 +13,7 @@ var sbx = require('../lib/sbx');
 var source = 'var _ = require(\'lodash\');var x = 20; console.log(\'Printing value of x from the child process, x =\', x);x = _.uniq([1,2,3,3,2,2,4]);';
 source     = 'var fn = function() {var rx = new RegExp(/.*/); var y = "hi".match(rx); return {rx: rx, y: y};}; var f = fn();';
 source     = 'console.log("exit");process.exit();';
+source     = 'var x = 10';
 
 
 // set up the arguments
@@ -25,9 +26,6 @@ var callback  = function(reply) {
 };
 
 // call the vm function and pass the arguments
-sbx.vm(source, callback, variables, timeout, false);
-
-// set a timeout for testing
-setTimeout(function() {
-	console.log('done waiting, exiting');
-}, 3000);
+sbx.vm(source, variables, timeout, false).then(function(reply) {
+	console.log(reply);
+});
