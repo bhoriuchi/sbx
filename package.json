@@ -1,6 +1,6 @@
 {
   "name": "sbx",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Run untrusted code as a VM in a child process",
   "main": "lib/sbx.js",
   "repository": {
@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "bluebird": "^2.10.2",
-    "dotprune": "^0.1.3"
+    "dotprune": "^0.1.4"
   },
   "scripts": {
     "test": "echo \\\"Error: no test specified\\\" && exit 1"
