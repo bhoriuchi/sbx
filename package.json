@@ -1,6 +1,6 @@
 {
   "name": "sbx",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Run untrusted code as a VM in a child process",
   "main": "lib/sbx.js",
   "repository": {
