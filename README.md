@@ -27,7 +27,8 @@ To summarize the inner workings of `sbx`, a call to `sbx.vm()` is made passing t
 ### Special Functions
 In order to capture data from the `vm` code execution the following function(s) can be added to untrusted code
 
-* `sbx.log`( `object`, [, `object`] ) - Adds a log string to `_stdout`
+* `sbx.log`( `object`[, `object`] ) - Adds a log string to `_stdout`
+* `_log`( `object`[, `object`] ) - Adds a log string to `_stdout` (alias for `sbx.log()`)
 
 
 ### Output
@@ -95,18 +96,18 @@ sbx.vm(code, variables, timeout, callback, false);
 var sbx       = require('sbx');
 
 // set options
-var code      = 'var _ = require("lodash"); x = _.uniq(x); sbx.log("done")';
+var code      = 'var _ = require("lodash"); x = _.uniq(x); sbx.log("done"); _log("and done")';
 var variables = { x: [1,1,2,2,3,4,5,6,6] };
 var timeout   = 100;
 
 // call the vm method passing the code and options in any order
 sbx.vm(code, variables, timeout, false).then(function(context) {
     console.log('The value of x = ', context.x, false);
-    console.log(context._stdout[0]);
+    console.log(context._stdout);
 });
 
 // > The value of x = [1, 2, 3, 4, 5, 6]
-// > done
+// > ['done', 'and done']
 
 ```
 
