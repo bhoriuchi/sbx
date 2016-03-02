@@ -9,7 +9,6 @@ To summarize the inner workings of `sbx`, a call to `sbx.vm()` is made passing t
 * And the [Change Log](https://github.com/bhoriuchi/sbx/wiki/Change-Log) for what's new
 
 ---
-<br>
 
 ## Documentation
 ---
@@ -40,9 +39,11 @@ In order to capture data from the `vm` code execution the following function(s) 
 * [`context variables`] [`*`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects) - Any variables passed to the VM. Any variables created inside the VM that need to be accessed should be returned and accessed via `_result` since `vm` code is executed inside a function
 
 ---
-<br>
+
 ## Example
+
 ---
+
 ```js
 // require sbx
 var sbx       = require('sbx');
@@ -63,9 +64,10 @@ sbx.vm(code, variables, timeout, callback);
 
 ```
 
-<br>
 ## Example with external module
+
 ---
+
 ```js
 // require sbx
 var sbx       = require('sbx');
@@ -87,10 +89,10 @@ sbx.vm(code, variables, timeout, callback, false);
 
 ```
 
-
-<br>
 ## Example with external module using `promise`
+
 ---
+
 ```js
 // require sbx
 var sbx       = require('sbx');
@@ -110,13 +112,3 @@ sbx.vm(code, variables, timeout, false).then(function(context) {
 // > ['done', 'and done']
 
 ```
-
-
----
-<br>
-## Tools
----
-Created with [Nodeclipse](https://github.com/Nodeclipse/nodeclipse-1)
- ([Eclipse Marketplace](http://marketplace.eclipse.org/content/nodeclipse), [site](http://www.nodeclipse.org))   
-
-Nodeclipse is free open-source project that grows with your contributions.
