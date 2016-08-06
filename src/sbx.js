@@ -7,6 +7,7 @@
  */
 import Promise from 'bluebird'
 import childProcess from 'child_process'
+import * as _ from './litedash'
 
 const VERSION = '2.0.0'
 const TYPE = 'sbx'
@@ -44,16 +45,16 @@ function getModules (source) {
  * @param {Function} [callback] - A function to call on completion that is passed the context as its argument.
  * 
  */
-function vm () {
+export function vm () {
 	let [modules, lockdown, variables, source, timeout, callback ] = [[], true, {}, null, null, null]
 
-	for (var i = 0; i < arguments.length; i++) {
-		if (typeof(arguments[i]) === 'number') timeout = arguments[i]
-		else if (typeof(arguments[i]) === 'string') source = arguments[i]
-		else if (typeof(arguments[i]) === 'function') callback = arguments[i]
-		else if (typeof(arguments[i]) === 'object') variables = arguments[i]
-		else if (typeof(arguments[i]) === 'boolean') lockdown = arguments[i]
-	}
+  _.forEach(Array.prototype.slice.call(arguments), (arg) => {
+    if (_.isNumber(arg)) timeout = Number(arg)
+    else if (_.isString(arg)) source = arg
+    else if (_.isFunction(arg)) callback = arg
+    else if (_.isHash(arg)) variables = arg
+    else if (_.isBoolean(arg)) lockdown = arg
+  })
 
 	if (!source) throw new Error('Source is a required argument')
 	
@@ -71,13 +72,8 @@ function vm () {
 			resolve(reply)
 		})
 		
-		p.on('error', (err) => {
-			reject(err)
-		})
-		
-		p.on('timeout', () => {
-			reject(new Promise.TimeoutError())
-		})
+		p.on('error', (err) => reject(err))
+		p.on('timeout', () => reject(new Promise.TimeoutError()))
 	})
 
 	if (timeout) request.timeout(timeout)

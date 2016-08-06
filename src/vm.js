@@ -7,12 +7,12 @@
  */
 import vm from 'vm'
 import util from 'util'
-import dotprune from 'dotprune'
 import events from 'events'
 import standard from './standard'
+import * as _ from './litedash'
 
 let emitter = new events.EventEmitter()
-const evt_log = 'SBX_VM_CONSOLE_LOG'
+const evt_log = 'sbx.log'
 
 let standards = standard(emitter, evt_log)
 let stdout = []
@@ -28,34 +28,20 @@ emitter.on(evt_log, (args) => {
 	console.log.apply(null, args)
 })
 
-// function to determine if the object is a promise
-function isPromise (obj) {
-	return obj && typeof(obj.then) === 'function' && typeof(obj.catch) === 'function'
-}
-
 // function to remove modules from the context
 function clean (context, msg) {
 	msg.modules = msg.modules || []
-	
-	let [i, keys] = [null, null]
-	// remove the standard modules used
-	keys = Object.keys(standards)
-	for (i = 0; i < keys.length; i++) {
-		delete context[keys[i]]
-	}
-	
-	// delete the required modules
-	for(i = 0; i < msg.modules.length; i++) {
-		delete context[msg.modules[i]]
-	}
-	
-	// delete require
-	if (context.require) {
-		delete context.require
-	}
-	
-	// return the context with circular references replaced
-	return dotprune.circular(context)
+
+  _.forEach(standards, (standard, key) => {
+	  delete context[key]
+  })
+
+  _.forEach(msg.modules, (module, key) => {
+    delete context[key]
+  })
+
+	if (context.require) delete context.require
+	return _.circular(context)
 }
 
 function handleError (err, scope, msg, context, stdout) {
@@ -76,7 +62,6 @@ function handleSuccess(msg, context, stdout) {
 	process.send(clean(context, msg))
 	process.exit(0)
 }
-
 
 // create an event handler for message
 process.once('message', (msg) => {
@@ -108,45 +93,49 @@ process.once('message', (msg) => {
 	if (msg.lockdown === false) context.require = require
 	
 	// wrap the source code in a try catch
-	let source = ' ' +
-		'try { ' +
-		'  _result = (function () { ' + msg.source + ' })(); ' +
-		'  if (_result && typeof(_result.then) === \'function\' && typeof(_result.catch) === \'function\') { ' +
-		(options.timeout ? ('    if (typeof(_result.timeout) === \'function\') { _result = _result.timeout(' + options.timeout + ');} ') : '') +
-		'    _result = _result.then(function(_promiseResult) { ' +
-		'      return _promiseResult; ' +
-		'    })' +
-		'    .catch(function(err) { ' +
-		'      _exception = {scope:\'vm\',lineNumber: err.lineNumber, message: err.message, stack: err.stack}; ' +
-		'    }); ' +
-		'  } ' +
-		'} ' +
-		'catch (err) { ' +
-		'  _exception = {scope:\'vm\',lineNumber: err.lineNumber, message: err.message, stack: err.stack}; ' +
-		'}'
-	
-	// try to execute the script
+  let timeoutStr = options.timeout ?
+    `    if (typeof _result.timeout === 'function') _result = _result.timeout(${options.timeout});` : ''
+
+  let source = `
+try {
+  _result = (function() { ${msg.source} })();
+  if (_result && typeof _result.then === 'function') {
+    ${timeoutStr}
+    _result = _result.then(function (_promiseResult) {
+      return _promiseResult;
+    }).catch(function (err) {
+      _exception = {
+        scope: 'vm',
+        lineNumber: err.lineNumber,
+        message: err.message,
+        stack: err.stack
+      };
+    });
+  } 
+} catch (err) {
+  _exception = {
+    scope: 'vm',
+    lineNumber: err.lineNumber,
+    message: err.message,
+    stack: err.stack
+  };
+};
+`
+
 	try {
 		let script = vm.createScript(source)
 		script.runInNewContext(context, options)
-		
-		// check for a promise result and resolve it before returning the context
-		if (isPromise(context._result)) {
-			context._result.then((result) => {
-				
-				if (isPromise(result)) {
-					return result.then((innerResult) => {
-						handleSuccess(msg, context, stdout)
-					})
-				}
-				handleSuccess(msg, context, stdout)
-			}).catch(function(err) {
-				handleError(err, 'vm', msg, context, stdout)
-			})
-		}
-		else {
-			handleSuccess(msg, context, stdout)
-		}
+
+    if (!_.isPromise(context._result)) return handleSuccess(msg, context, stdout)
+
+    return context._result.then((result) => {
+      if (!_.isPromise(result)) return handleSuccess(msg, context, stdout)
+      return result.then((innerResult) => {
+        handleSuccess(msg, context, stdout)
+      })
+    }).catch(function(err) {
+      handleError(err, 'vm', msg, context, stdout)
+    })
 	}
 	catch(err) {
 		handleError(err, 'child_process', msg, context, stdout)
