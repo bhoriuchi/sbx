@@ -46,14 +46,14 @@ function getModules (source) {
  * 
  */
 export function vm () {
-	let [modules, lockdown, variables, source, timeout, callback ] = [[], true, {}, null, null, null]
+	let modules = [], lockdown = true, variables = {}, source = null, timeout = null, callback = null
 
   _.forEach(Array.prototype.slice.call(arguments), (arg) => {
-    if (_.isNumber(arg)) timeout = Number(arg)
+    if (_.isBoolean(arg)) lockdown = arg
+    else if (_.isNumber(arg)) timeout = Number(arg)
     else if (_.isString(arg)) source = arg
     else if (_.isFunction(arg)) callback = arg
     else if (_.isHash(arg)) variables = arg
-    else if (_.isBoolean(arg)) lockdown = arg
   })
 
 	if (!source) throw new Error('Source is a required argument')

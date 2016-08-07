@@ -98,16 +98,15 @@ var TYPE = 'sbx';
  * 
  */
 function vm() {
-  var modules = [];
-  var lockdown = true;
-  var variables = {};
-  var source = null;
-  var timeout = null;
-  var callback = null;
-
+  var modules = [],
+      lockdown = true,
+      variables = {},
+      source = null,
+      timeout = null,
+      callback = null;
 
   forEach(Array.prototype.slice.call(arguments), function (arg) {
-    if (isNumber(arg)) timeout = Number(arg);else if (isString(arg)) source = arg;else if (isFunction(arg)) callback = arg;else if (isHash(arg)) variables = arg;else if (isBoolean(arg)) lockdown = arg;
+    if (isBoolean(arg)) lockdown = arg;else if (isNumber(arg)) timeout = Number(arg);else if (isString(arg)) source = arg;else if (isFunction(arg)) callback = arg;else if (isHash(arg)) variables = arg;
   });
 
   if (!source) throw new Error('Source is a required argument');
