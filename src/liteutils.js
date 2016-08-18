@@ -48,30 +48,26 @@ export function forEach (obj, fn) {
   }
 }
 
-// function to determine if the object is a promise
 export function isPromise (obj) {
-  return obj && isFunction(obj.then)
+  return isObject(obj) && isFunction(obj.then) && isFunction(obj.catch)
 }
 
-export function contains (list, value) {
-  for (let item of list) {
-    if (item === value) return true
-  }
-  return false
+export function contains (list, obj) {
+  return list.reduce((prev, cur) => (cur === obj && prev), false)
 }
 
-export function circular (obj) {
-  let circularEx = (obj, value = '[Circular]', key = null, seen = []) => {
-    seen.push(obj)
-    if (isObject(obj)) {
-      forEach(obj, (o, i) => {
-        if (contains(seen, o)) obj[i] = isFunction(value) ? value(obj, key, seen.slice(0)) : value
-        else circularEx(o, value, i, seen.slice(0))
+export function circular (obj, value = '[Circular]') {
+  let circularEx = (_obj, key = null, seen = []) => {
+    seen.push(_obj)
+    if (isObject(_obj)) {
+      forEach(_obj, (o, i) => {
+        if (contains(seen, o)) _obj[i] = isFunction(value) ? value(_obj, key, seen.slice(0)) : value
+        else circularEx(o, i, seen.slice(0))
       })
     }
-    return obj
+    return _obj
   }
 
   if (!obj) throw new Error('circular requires an object to examine')
-  return circularEx(obj)
+  return circularEx(obj, value)
 }

@@ -47,6 +47,7 @@
     "build:sbx": "npm run build:copybrc && rollup -c build/rollup.config.sbx.js && npm run build:rmbrc",
     "build:vm": "npm run build:copybrc && rollup -c build/rollup.config.vm.js && npm run build:rmbrc",
     "build": "npm run build:sbx && npm run build:vm",
+    "test:nobuild": "mocha test/index.js",
     "test": "npm run build && mocha test/index.js",
     "example": "npm run build && node example/test.js --harmony"
   },
