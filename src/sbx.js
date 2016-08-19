@@ -120,12 +120,13 @@ try {
       let onSuccess = function (reply) {
         if (promiseTimeout) clearTimeout(promiseTimeout)
         callback(null, reply)
-        resolve(reply)
+        return resolve(reply)
       }
+
       let onFail = function (error) {
         if (promiseTimeout) clearTimeout(promiseTimeout)
         callback(error)
-        reject(error)
+        return reject(error)
       }
 
       // get modules

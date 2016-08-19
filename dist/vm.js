@@ -173,7 +173,8 @@ process.once('message', function (msg) {
 	if (msg.lockdown === false) context.require = require;
 
 	try {
-		var script = vm.createScript(msg.source.replace(/'use strict';\n/, ''));
+		var source = msg.source.replace(/\s*['"]use\s+strict['"](;)?\s*/g, ''); // remove 'use strict'
+		var script = vm.createScript(source);
 		script.runInNewContext(context, options);
 
 		if (!isPromise(context._result)) return handleSuccess(msg, context, stdout);

@@ -1,0 +1,13 @@
+build
+example
+lib
+node_modules
+src
+test
+.babelrc
+.DS_Store
+.idea
+npm-debug.log
+.npmignore
+.travis.yml
+.*

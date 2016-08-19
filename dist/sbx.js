@@ -141,12 +141,13 @@ function vm(source, options, callback) {
         var onSuccess = function onSuccess(reply) {
           if (promiseTimeout) clearTimeout(promiseTimeout);
           callback(null, reply);
-          resolve(reply);
+          return resolve(reply);
         };
+
         var onFail = function onFail(error) {
           if (promiseTimeout) clearTimeout(promiseTimeout);
           callback(error);
-          reject(error);
+          return reject(error);
         };
 
         // get modules

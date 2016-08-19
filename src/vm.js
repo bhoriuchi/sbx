@@ -80,7 +80,8 @@ process.once('message', (msg) => {
 	if (msg.lockdown === false) context.require = require
 
 	try {
-		let script = vm.createScript(msg.source.replace(/'use strict';\n/, ''))
+    let source = msg.source.replace(/\s*['"]use\s+strict['"](;)?\s*/g, '') // remove 'use strict'
+		let script = vm.createScript(source)
 		script.runInNewContext(context, options)
 
     if (!_.isPromise(context._result)) return handleSuccess(msg, context, stdout)

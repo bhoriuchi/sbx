@@ -83,7 +83,7 @@ describe('VM', function () {
   })
 
   it('Should transform es6 to es5', function (done) {
-    var source = 'let fn = function (msg) { return msg }\nreturn fn(message)'
+    var source = 'let fn = (msg) => msg\nreturn fn(message)'
     var context = { message: 'test' }
     var transform = function (code) {
       var out = babel.transform(code, {
@@ -98,5 +98,4 @@ describe('VM', function () {
       done()
     })
   })
-
 })

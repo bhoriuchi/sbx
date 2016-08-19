@@ -1,12 +1,19 @@
-# ☢ sbx ☢
+# sbx
+---
+Run untrusted code as a VM in a child process
+
+`sbx` allows you to run untrusted code in a more secure manner than simply using `eval()` or `function()`. To accomplish this, a child process is forked and untrusted code is run in `vm` with its own context. Inside the `vm` the untrusted code is wrapped in a try/catch inside an anonymous function in order to capture exceptions and output. Upon completion the context is returned to the user via callback or promise
+
+##### Notes:
+* Code is run inside an anonymous function and should be written as such
+* Reserved variables `_result`, `_exception`, and `_stdout` are added to the context and should not be set by untrusted code
+* `'use strict'` statements are removed from untrusted code as they cause exceptions for passed context variables
+
 ---
 
-`sbx` is one of many sandbox implementations to choose from. It, like many other modules allows you to run untrusted code in a node `vm` as a child process. 
-
-To summarize the inner workings of `sbx`, a call to `sbx.vm()` is made passing the untrusted code to run along with optional context options and callback. The code is parsed for require statements and if lockdown is false, require is allowed. A process is forked and a `once` event listener is started on both the parent and child. The child process then builds a context using the options provided and the untrusted code is wrapped in a try/catch to capture any exceptions for debugging. The try/catch is placed inside of a function in order to capture any return output. The untrusted code is then run using the context it built with an optional timeout. Upon completion, all required modules are removed from the context and it is sent back to the parent as a message. If a callback was specified, the message is passed as the only argument to the callback. The vm() method returns a promise that resolves to the context after the code has been run. The end.
-
-* See the [WIKI](https://github.com/bhoriuchi/sbx/wiki) for full documentation
-* And the [Change Log](https://github.com/bhoriuchi/sbx/wiki/Change-Log) for what's new
+* [WIKI](https://github.com/bhoriuchi/sbx/wiki)
+* [Change Log](https://github.com/bhoriuchi/sbx/wiki/Change-Log)
+* [v1.x.x Documentation](https://github.com/bhoriuchi/sbx/wiki/v1.x.x)
 
 ---
 
@@ -14,101 +21,104 @@ To summarize the inner workings of `sbx`, a call to `sbx.vm()` is made passing t
 ---
 ### API
 
-#### `sbx.vm`( `code`, [`variables`], [`timeout`], [`callback`], [`lockdown`] )
+#### `sbx.vm`( `code`, [`options`], [`callback`] )
 
-* `code` [`String`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String) - string of Javascript to run.
-* [`variables`] [`Object`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object) - A hash of variables ( `{name : value}` )
-* [`timeout`] [`Number`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number) - Time in miliseconds before the VM times out
-* [`callback`] [`Function`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function) - A function to call passing the final context of the VM
-* [`lockdown=true`] [`Boolean`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) - If false, require statements will be allowed in order to use external modules
+* `code` [`{String}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String) - string of untrusted Javascript to run.
+* [`options`] [`{Object}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object) - Options hash
+  * [`context`] [`{Object}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object) - Hash of key/value pairs that will be passed to the vm and are available to the untrusted code. *previously `variables`*
+  * [`lockdown=true`] [`{Boolean}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) - If false, require statements will be allowed in order to use external modules
+  * [`timeout`] [`{Number}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number) - Time in miliseconds before the VM times out
+  * [`transform`] [`{Function}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function) - A function with the signature `transform (code, options)` that should return a string of transformed code. This can be used to transform `ES6` code using `babel` *see example*
+* [`callback`] [`{Function}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function) - Error first callback with signature `callback(error, context)`
+
+##### Returns
+
+[`Promise`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) That resolves to an `SBXContext`
 
 
-### Special Functions
-In order to capture data from the `vm` code execution the following function(s) can be added to untrusted code
+### Types
 
-* `sbx.log`( `object`[, `object`] ) - Adds a log string to `_stdout`
-* `_log`( `object`[, `object`] ) - Adds a log string to `_stdout` (alias for `sbx.log()`)
+#### `SBXContext`
+* `_result` [`{any}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects) - The return result of the executed code
+* `_exception` [`{Object}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object) - A hash containing the error message, stack trace, and scope of where the exception was caught (the `child_process` or the `vm`)
+* `_stdout` [`{Array}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) - An array of stringified values from any calls made by `sbx.log()` inside the `vm`
+* [`context variables`] [`{any}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects) - Updated context variables
 
 
-### Output
-`sbx` resolves or passes as an argument to the specified callback a reply object. The reply object contains the following properties
+### Capturing stdout
+In order to capture data from the `vm` code execution a logging function (`sbx.log()`) is added to the context
 
-* `_result` [`*`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects) - The return result of the executed code
-* `_exception` [`Object`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object) - A hash containing the error message, stack trace, and scope of where the exception was caught (the `child_process` or the `vm`)
-* `_stdout` [`Array`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array) - An array of stringified values from any calls made by `sbx.log()` inside the `vm`
-* [`context variables`] [`*`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects) - Any variables passed to the VM. Any variables created inside the VM that need to be accessed should be returned and accessed via `_result` since `vm` code is executed inside a function
-
----
+* `sbx.log`( `any`[, `any`] ) - Adds a log string to the `_stdout` array
 
 ## Example
 
----
-
 ```js
-// require sbx
-var sbx       = require('sbx');
+var sbx = require('sbx')
 
-// set options
-var code      = 'x++; console.log(\'I like the number\', x);'
-var variables = { x: 7 };
-var timeout   = 100;
-var callback  = function(context) {
-  console.log('The value of x = ', context.x);
-};
+var code = 'x++; console.log(\'I like the number\', x);'
 
-// call the vm method passing the code and options in any order
-sbx.vm(code, variables, timeout, callback);
+var options = {
+  context: { x: 7 },
+  timeout: 100
+}
+
+var callback = function(error, context) {
+  if (error) return console.error(error)
+  console.log('The value of x = ', context.x)
+}
+
+sbx.vm(code, options, callback)
 
 // > I like the number 8
 // > The value of x = 8
-
 ```
 
-## Example with external module
-
----
+## Example with external module and promise result
 
 ```js
-// require sbx
-var sbx       = require('sbx');
+var sbx = require('sbx')
 
-// set options
 var code      = 'var _ = require("lodash"); x = _.uniq(x); return x;'
-var variables = { x: [1,1,2,2,3,4,5,6,6] };
-var timeout   = 100;
-var callback  = function(context) {
-  console.log('The value of x = ', context.x, false);
-  console.log(context._result);
-};
 
-// call the vm method passing the code and options in any order
-sbx.vm(code, variables, timeout, callback, false);
+var options = {
+  context: { x: [1,1,2,2,3,4,5,6,6] },
+  lockdown: false
+}
+
+sbx.vm(code, options).then(function (context) {
+  console.log('The value of x = ', context.x, false)
+  console.log(context._result)
+}).catch(function (error) {
+  console.error(error)
+})
 
 // > The value of x = [1, 2, 3, 4, 5, 6]
 // > [1, 2, 3, 4, 5, 6]
-
 ```
 
-## Example with external module using `promise`
-
----
+## Example with es2015 transform via babel + logging
 
 ```js
-// require sbx
-var sbx       = require('sbx');
+var babel = require('babel-core')
+var sbx = require('sbx')
 
-// set options
-var code      = 'var _ = require("lodash"); x = _.uniq(x); sbx.log("done"); _log("and done")';
-var variables = { x: [1,1,2,2,3,4,5,6,6] };
-var timeout   = 100;
+var code = 'let fn = (msg) => msg\nsbx.log(message)\nreturn fn(message)'
 
-// call the vm method passing the code and options in any order
-sbx.vm(code, variables, timeout, false).then(function(context) {
-    console.log('The value of x = ', context.x, false);
-    console.log(context._stdout);
-});
+var options = {
+  context: { message: 'test' },
+  transform: function (code, opts) {
+    return babel.transform(code, {
+      presets: ['es2015', 'stage-2'],
+      plugins: ['transform-runtime']
+    }).code
+  }
+}
 
-// > The value of x = [1, 2, 3, 4, 5, 6]
-// > ['done', 'and done']
+sbx.vm(code, options).then(function(context) {
+  console.log('Result = ', context._result)
+  console.log(context._stdout)
+})
 
+// > Result = test
+// > ['test']
 ```
