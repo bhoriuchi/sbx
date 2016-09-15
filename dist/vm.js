@@ -4,7 +4,7 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 
 var vm = _interopDefault(require('vm'));
 var util = _interopDefault(require('util'));
-var events = _interopDefault(require('events'));
+var events = require('events');
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
   return typeof obj;
@@ -14,10 +14,6 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 function isFunction(obj) {
   return typeof obj === 'function';
-}
-
-function isArray(obj) {
-  return Array.isArray(obj);
 }
 
 function isObject(obj) {
@@ -93,7 +89,6 @@ function circular(obj) {
   return circularEx(obj, value);
 }
 
-var _arguments = arguments;
 /**
  * Run untrusted code in a VM and send the results as a message to the parent
  * 
@@ -101,93 +96,116 @@ var _arguments = arguments;
  * @license MIT
  * 
  */
-var EVENT_LOG = 'sbx.log';
+var makeLog = function makeLog(stdout, type, args) {
+  console[type].apply(null, args);
+  stdout.push({
+    type: type,
+    time: new Date(),
+    stdout: util.inspect(args)
+  });
+};
 
-var stdout = [];
-var emitter = new events.EventEmitter();
-var log = function log() {
-	return emitter.emit(EVENT_LOG, [].concat(Array.prototype.slice.call(_arguments)));
+var captureConsole = function captureConsole(stdout) {
+  return {
+    assert: function assert() {
+      console.assert.apply(null, [].concat(Array.prototype.slice.call(arguments)));
+    },
+    dir: function dir() {
+      console.dir.apply(null, [].concat(Array.prototype.slice.call(arguments)));
+    },
+    error: function error() {
+      return makeLog(stdout, 'error', [].concat(Array.prototype.slice.call(arguments)));
+    },
+    info: function info() {
+      return makeLog(stdout, 'info', [].concat(Array.prototype.slice.call(arguments)));
+    },
+    log: function log() {
+      return makeLog(stdout, 'log', [].concat(Array.prototype.slice.call(arguments)));
+    },
+    time: function time(label) {
+      console.time(label);
+    },
+    timeEnd: function timeEnd(label) {
+      console.timeEnd(label);
+    },
+    trace: function trace() {
+      return makeLog(stdout, 'trace', [].concat(Array.prototype.slice.call(arguments)));
+    },
+    warn: function warn() {
+      return makeLog(stdout, 'warn', [].concat(Array.prototype.slice.call(arguments)));
+    }
+  };
 };
 
 var standards = {
-	sbx: { log: log },
-	console: console,
-	process: process,
-	exports: exports,
-	setTimeout: setTimeout,
-	clearTimeout: clearTimeout,
-	setInterval: setInterval,
-	clearInterval: clearInterval
+  captureConsole: captureConsole,
+  process: process,
+  exports: exports,
+  setTimeout: setTimeout,
+  clearTimeout: clearTimeout,
+  setInterval: setInterval,
+  clearInterval: clearInterval,
+  sbx: {}
 };
-
-// handle sbx event logs
-emitter.on(EVENT_LOG, function (args) {
-	var log = '';
-	forEach(args, function (arg) {
-		arg = isObject(arg) || isArray(arg) ? util.inspect(arg) : arg;
-		log = !log ? String(arg) : log + '  ' + String(arg);
-	});
-	stdout.push(log);
-	console.log.apply(null, args);
-});
 
 // function to remove modules from the context
 function clean(context, msg) {
-	msg.modules = msg.modules || [];
+  msg.modules = msg.modules || [];
 
-	forEach(standards, function (standard, key) {
-		delete context[key];
-	});
+  forEach(standards, function (standard, key) {
+    delete context[key];
+  });
 
-	forEach(msg.modules, function (module, key) {
-		delete context[key];
-	});
+  forEach(msg.modules, function (module, key) {
+    delete context[key];
+  });
 
-	if (context.require) delete context.require;
-	return circular(context);
+  // remove the console from the context
+  delete context.console;
+
+  if (context.require) delete context.require;
+  return circular(context);
 }
 
-function handleError(err, scope, msg, context, stdout) {
-	context._exception = {
-		scope: scope,
-		lineNumber: err.lineNumber,
-		message: err.message,
-		stack: err.stack,
-		stdout: stdout
-	};
-	process.send(clean(context, msg));
-	process.exit(1);
+function handleError(err, scope, msg, context) {
+  context._exception = {
+    scope: scope,
+    lineNumber: err.lineNumber,
+    message: err.message,
+    stack: err.stack
+  };
+  process.send(clean(context, msg));
+  process.exit(1);
 }
 
 // function to handle success
-function handleSuccess(msg, context, stdout) {
-	context._stdout = stdout;
-	process.send(clean(context, msg));
-	process.exit(0);
+function handleSuccess(msg, context) {
+  process.send(clean(context, msg));
+  process.exit(0);
 }
 
 // create an event handler for message
 process.once('message', function (msg) {
-	var options = { displayErrors: false, timeout: msg.timeout };
-	var context = Object.assign({}, standards, msg.context, { _exception: null, _result: null });
-	if (msg.lockdown === false) context.require = require;
+  var options = { displayErrors: false, timeout: msg.timeout };
+  var context = Object.assign({}, standards, msg.context, { _exception: null, _result: null, _stdout: [] });
+  if (msg.lockdown === false) context.require = require;
 
-	try {
-		var source = msg.source.replace(/\s*['"]use\s+strict['"](;)?\s*/g, ''); // remove 'use strict'
-		var script = vm.createScript(source);
-		script.runInNewContext(context, options);
+  try {
+    var source = msg.source.replace(/\s*['"]use\s+strict['"](;)?\s*/g, ''); // remove 'use strict'
+    var script = vm.createScript(source);
+    script.runInNewContext(context, options);
 
-		if (!isPromise(context._result)) return handleSuccess(msg, context, stdout);
+    if (!isPromise(context._result)) return handleSuccess(msg, context);
 
-		return context._result.then(function (result) {
-			if (!isPromise(result)) return handleSuccess(msg, context, stdout);
-			return result.then(function (innerResult) {
-				return handleSuccess(msg, context, stdout);
-			});
-		}).catch(function (err) {
-			return handleError(err, 'vm', msg, context, stdout);
-		});
-	} catch (err) {
-		handleError(err, 'child_process', msg, context, stdout);
-	}
+    return context._result.then(function (result) {
+      if (!isPromise(result)) return handleSuccess(msg, context);
+      return result.then(function (innerResult) {
+        return handleSuccess(msg, context);
+      });
+    }).catch(function (err) {
+      return handleError(err, 'vm', msg, context);
+    });
+  } catch (err) {
+    handleError(err, 'child_process', msg, context);
+  }
 });

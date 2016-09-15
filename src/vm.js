@@ -10,33 +10,57 @@ import util from 'util'
 import events from 'events'
 import * as _ from './liteutils'
 
-const EVENT_LOG = 'sbx.log'
+let makeLog = function (stdout, type, args) {
+  console[type].apply(null, args)
+  stdout.push({
+    type,
+    time: new Date(),
+    stdout: util.inspect(args)
+  })
+}
 
-let stdout = []
-let emitter = new events.EventEmitter()
-let log = () => emitter.emit(EVENT_LOG, [ ...arguments ])
+let captureConsole = function (stdout) {
+  return {
+    assert () {
+      console.assert.apply(null, [...arguments])
+    },
+    dir () {
+      console.dir.apply(null, [...arguments])
+    },
+    error () {
+      return makeLog(stdout, 'error', [...arguments])
+    },
+    info () {
+      return makeLog(stdout, 'info', [...arguments])
+    },
+    log () {
+      return makeLog(stdout, 'log', [...arguments])
+    },
+    time (label) {
+      console.time(label)
+    },
+    timeEnd (label) {
+      console.timeEnd(label)
+    },
+    trace () {
+      return makeLog(stdout, 'trace', [...arguments])
+    },
+    warn () {
+      return makeLog(stdout, 'warn', [...arguments])
+    },
+  }
+}
 
 let standards = {
-  sbx: { log },
-  console,
+  captureConsole,
   process,
   exports,
   setTimeout,
   clearTimeout,
   setInterval,
-  clearInterval
+  clearInterval,
+  sbx: {}
 }
-
-// handle sbx event logs
-emitter.on(EVENT_LOG, (args) => {
-	let log = ''
-	_.forEach(args, (arg) => {
-		arg = _.isObject(arg) || _.isArray(arg) ? util.inspect(arg) : arg
-		log = !log ? String(arg) : `${log}  ${String(arg)}`
-	})
-	stdout.push(log)
-	console.log.apply(null, args)
-})
 
 // function to remove modules from the context
 function clean (context, msg) {
@@ -50,25 +74,26 @@ function clean (context, msg) {
     delete context[key]
   })
 
+  // remove the console from the context
+  delete context.console
+
 	if (context.require) delete context.require
 	return _.circular(context)
 }
 
-function handleError (err, scope, msg, context, stdout) {
+function handleError (err, scope, msg, context) {
 	context._exception = {
 		scope,
 		lineNumber: err.lineNumber,
 		message: err.message,
-		stack: err.stack,
-		stdout
+		stack: err.stack
 	}
 	process.send(clean(context, msg))
 	process.exit(1)
 }
 
 // function to handle success
-function handleSuccess(msg, context, stdout) {
-	context._stdout = stdout
+function handleSuccess(msg, context) {
 	process.send(clean(context, msg))
 	process.exit(0)
 }
@@ -76,7 +101,7 @@ function handleSuccess(msg, context, stdout) {
 // create an event handler for message
 process.once('message', (msg) => {
   let options = { displayErrors: false, timeout: msg.timeout }
-  let context = Object.assign({}, standards, msg.context, { _exception: null, _result: null })
+  let context = Object.assign({}, standards, msg.context, { _exception: null, _result: null, _stdout: [] })
 	if (msg.lockdown === false) context.require = require
 
 	try {
@@ -84,14 +109,14 @@ process.once('message', (msg) => {
 		let script = vm.createScript(source)
 		script.runInNewContext(context, options)
 
-    if (!_.isPromise(context._result)) return handleSuccess(msg, context, stdout)
+    if (!_.isPromise(context._result)) return handleSuccess(msg, context)
 
     return context._result.then((result) => {
-      if (!_.isPromise(result)) return handleSuccess(msg, context, stdout)
-      return result.then((innerResult) => handleSuccess(msg, context, stdout))
-    }).catch((err) => handleError(err, 'vm', msg, context, stdout))
+      if (!_.isPromise(result)) return handleSuccess(msg, context)
+      return result.then((innerResult) => handleSuccess(msg, context))
+    }).catch((err) => handleError(err, 'vm', msg, context))
 	}
 	catch(err) {
-		handleError(err, 'child_process', msg, context, stdout)
+		handleError(err, 'child_process', msg, context)
 	}
 })

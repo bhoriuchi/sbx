@@ -99,6 +99,8 @@ export function vm (source, options, callback) {
 
       let sourceWrap = `
 try {
+  var console = captureConsole(_stdout);
+  sbx.log = console.log;
   _result = (function() { ${source} })();
   if (_result && typeof _result.then === 'function') {
     ${timeoutStr}

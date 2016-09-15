@@ -46,9 +46,10 @@ Run untrusted code as a VM in a child process
 
 
 ### Capturing stdout
-In order to capture data from the `vm` code execution a logging function (`sbx.log()`) is added to the context
 
-* `sbx.log`( `any`[, `any`] ) - Adds a log string to the `_stdout` array
+All arguments to console methods `log`, `error`, `info`, `trace`, and `warn` are automatically added as items in the `_stdout` context variable
+
+You may also use the `sbx.log` method which is an alias for `console.log`
 
 ## Example
 
