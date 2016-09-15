@@ -71,11 +71,29 @@ export function vm (source, options, callback) {
   callback = _.isFunction(callback) ? callback : () => false
 
   let run = new Promise((resolve, reject) => {
+
+    let timeout = _.isNumber(options.timeout) && options.timeout > 0 ? options.timeout : undefined
+
+    // create a promise timeout
+    let promiseTimeout = timeout ? setInterval(() => new PromiseTimeoutError(), timeout) : null
+
+    let onFail = function (error) {
+      if (promiseTimeout) clearTimeout(promiseTimeout)
+      callback(error)
+      return reject(error)
+    }
+
+    // create success and fail functions
+    let onSuccess = function (reply) {
+      if (promiseTimeout) clearTimeout(promiseTimeout)
+      callback(null, reply)
+      return resolve(reply)
+    }
+
     try {
       // transform the source if it exists
       if (!_.isString(source)) throw new Error('Source is a required argument and must be a string')
 
-      let timeout = _.isNumber(options.timeout) && options.timeout > 0 ? options.timeout : undefined
       let timeoutStr = timeout ?
         `    if (typeof _result.timeout === 'function') _result = _result.timeout(${timeout});` : ''
 
@@ -112,22 +130,6 @@ try {
       // examine remaining options
       let lockdown = _.isBoolean(options.lockdown) ? options.lockdown : true
       let context = _.isHash(options.context) ? options.context : {}
-
-      // create a promise timeout
-      let promiseTimeout = timeout ? setInterval(() => new PromiseTimeoutError(), timeout) : null
-
-      // create success and fail functions
-      let onSuccess = function (reply) {
-        if (promiseTimeout) clearTimeout(promiseTimeout)
-        callback(null, reply)
-        return resolve(reply)
-      }
-
-      let onFail = function (error) {
-        if (promiseTimeout) clearTimeout(promiseTimeout)
-        callback(error)
-        return reject(error)
-      }
 
       // get modules
       let modules = getModules(source)

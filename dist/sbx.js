@@ -116,62 +116,62 @@ function vm(source, options, callback) {
   };
 
   var run = new Promise(function (resolve, reject) {
+
+    var timeout = isNumber(options.timeout) && options.timeout > 0 ? options.timeout : undefined;
+
+    // create a promise timeout
+    var promiseTimeout = timeout ? setInterval(function () {
+      return new PromiseTimeoutError();
+    }, timeout) : null;
+
+    var onFail = function onFail(error) {
+      if (promiseTimeout) clearTimeout(promiseTimeout);
+      callback(error);
+      return reject(error);
+    };
+
+    // create success and fail functions
+    var onSuccess = function onSuccess(reply) {
+      if (promiseTimeout) clearTimeout(promiseTimeout);
+      callback(null, reply);
+      return resolve(reply);
+    };
+
     try {
-      (function () {
-        // transform the source if it exists
-        if (!isString(source)) throw new Error('Source is a required argument and must be a string');
+      // transform the source if it exists
+      if (!isString(source)) throw new Error('Source is a required argument and must be a string');
 
-        var timeout = isNumber(options.timeout) && options.timeout > 0 ? options.timeout : undefined;
-        var timeoutStr = timeout ? '    if (typeof _result.timeout === \'function\') _result = _result.timeout(' + timeout + ');' : '';
+      var timeoutStr = timeout ? '    if (typeof _result.timeout === \'function\') _result = _result.timeout(' + timeout + ');' : '';
 
-        var sourceWrap = '\ntry {\n  _result = (function() { ' + source + ' })();\n  if (_result && typeof _result.then === \'function\') {\n    ' + timeoutStr + '\n    _result = _result.then(function (_promiseResult) {\n      _result = _promiseResult;\n    }).catch(function (err) {\n      err = err instanceof Error ? err : new Error(err)\n      _exception = {\n        scope: \'vm\',\n        lineNumber: err.lineNumber,\n        message: err.message,\n        stack: err.stack\n      };\n    });\n  } \n} catch (err) {\n  err = err instanceof Error ? err : new Error(err)\n  _exception = {\n    scope: \'vm\',\n    lineNumber: err.lineNumber,\n    message: err.message,\n    stack: err.stack\n  };\n};\n';
-        source = isFunction(options.transform) ? options.transform(sourceWrap, options) : sourceWrap;
-        if (!isString(source)) throw new Error('The transformed source is not a string');
+      var sourceWrap = '\ntry {\n  _result = (function() { ' + source + ' })();\n  if (_result && typeof _result.then === \'function\') {\n    ' + timeoutStr + '\n    _result = _result.then(function (_promiseResult) {\n      _result = _promiseResult;\n    }).catch(function (err) {\n      err = err instanceof Error ? err : new Error(err)\n      _exception = {\n        scope: \'vm\',\n        lineNumber: err.lineNumber,\n        message: err.message,\n        stack: err.stack\n      };\n    });\n  } \n} catch (err) {\n  err = err instanceof Error ? err : new Error(err)\n  _exception = {\n    scope: \'vm\',\n    lineNumber: err.lineNumber,\n    message: err.message,\n    stack: err.stack\n  };\n};\n';
+      source = isFunction(options.transform) ? options.transform(sourceWrap, options) : sourceWrap;
+      if (!isString(source)) throw new Error('The transformed source is not a string');
 
-        // examine remaining options
-        var lockdown = isBoolean(options.lockdown) ? options.lockdown : true;
-        var context = isHash(options.context) ? options.context : {};
+      // examine remaining options
+      var lockdown = isBoolean(options.lockdown) ? options.lockdown : true;
+      var context = isHash(options.context) ? options.context : {};
 
-        // create a promise timeout
-        var promiseTimeout = timeout ? setInterval(function () {
-          return new PromiseTimeoutError();
-        }, timeout) : null;
+      // get modules
+      var modules = getModules(source);
 
-        // create success and fail functions
-        var onSuccess = function onSuccess(reply) {
-          if (promiseTimeout) clearTimeout(promiseTimeout);
-          callback(null, reply);
-          return resolve(reply);
-        };
+      // get the path to the child module
+      var child = __dirname + '/vm.js';
 
-        var onFail = function onFail(error) {
-          if (promiseTimeout) clearTimeout(promiseTimeout);
-          callback(error);
-          return reject(error);
-        };
+      // create a message and send it
+      var message = { source: source, lockdown: lockdown, context: context, modules: modules, timeout: timeout };
+      var p = childProcess.fork(child, message);
 
-        // get modules
-        var modules = getModules(source);
-
-        // get the path to the child module
-        var child = __dirname + '/vm.js';
-
-        // create a message and send it
-        var message = { source: source, lockdown: lockdown, context: context, modules: modules, timeout: timeout };
-        var p = childProcess.fork(child, message);
-
-        // listen for a message from the child process
-        p.once('message', function (reply) {
-          return reply._exception ? onFail(new SbxError(reply)) : onSuccess(reply);
-        });
-        p.on('error', function (error) {
-          return onFail(error);
-        });
-        p.on('timeout', function () {
-          return onFail(new PromiseTimeoutError());
-        });
-        p.send(message);
-      })();
+      // listen for a message from the child process
+      p.once('message', function (reply) {
+        return reply._exception ? onFail(new SbxError(reply)) : onSuccess(reply);
+      });
+      p.on('error', function (error) {
+        return onFail(error);
+      });
+      p.on('timeout', function () {
+        return onFail(new PromiseTimeoutError());
+      });
+      p.send(message);
     } catch (error) {
       return onFail(error);
     }
