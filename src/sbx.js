@@ -9,7 +9,7 @@ import childProcess from 'child_process'
 import util from 'util'
 import * as _ from './liteutils'
 
-const VERSION = '2.0.0'
+const VERSION = '2.1.0'
 const TYPE = 'sbx'
 
 // Custom error based off of - https://gist.github.com/justmoon/15511f92e5216fa2624b
@@ -40,11 +40,12 @@ util.inherits(PromiseTimeoutError, Error)
  */
 function getModules (source) {
 	let modules = []
+  let rx = /\s?(let|var)?\s*(.*)\s+=\s+require\(\s*['"].*['"]\s*\).*/gm
 	// let rx = /(\w+)\s*=\s*require\([\'\"]([A-Za-z0-9-_.\/!@]+)[\'\"]\).*?/g
 	let match = rx.exec(source)
 
 	while (match) {
-		if (match.length && match.length >= 3 && modules.indexOf(match[1]) !== -1) modules.push(match[1])
+		if (match.length && match.length > 2 && modules.indexOf(match[2]) !== -1) modules.push(match[2])
 		match = rx.exec(source)
 	}
 	return modules
@@ -69,8 +70,7 @@ function getImports (source) {
   return {
     imports: imports.join('\n'),
     source: source.replace(rx, ''),
-    modules,
-    imports
+    modules
   }
 }
 
@@ -82,6 +82,7 @@ function getImports (source) {
  * @param {Object} [options.context] - Context object
  * @param {Number} [options.timeout] - A timeout in milliseconds for the VM to run the source.
  * @param {Boolean} [options.lockdown=true] - Do not allow require statements
+ * @param {Boolean} [options.parseImports=false] - Parse es6+ import statements
  * @param {Function} [options.transform] - Function to transform source code (e.g. ES6 to ES5 via babel)
  * @param {Function} [callback] - A function to call on completion that is passed the context as its argument.
  * 
@@ -118,10 +119,23 @@ export function vm (source, options, callback) {
       // transform the source if it exists
       if (!_.isString(source)) throw new Error('Source is a required argument and must be a string')
 
+      let importStr = ''
       let timeoutStr = timeout ?
         `    if (typeof _result.timeout === 'function') _result = _result.timeout(${timeout});` : ''
 
+      // get modules
+      let modules = getModules(source)
+
+      // parse import statements
+      if (options.parseImports) {
+        let i = getImports(source)
+        importStr = i.imports
+        source = i.source
+        modules = _.union(modules, i.modules)
+      }
+
       let sourceWrap = `
+${importStr}
 try {
   var console = captureConsole(_stdout);
   sbx.log = console.log;
@@ -156,9 +170,6 @@ try {
       // examine remaining options
       let lockdown = _.isBoolean(options.lockdown) ? options.lockdown : true
       let context = _.isHash(options.context) ? options.context : {}
-
-      // get modules
-      let modules = getModules(source)
 
       // get the path to the child module
       let child = __dirname + '/vm.js'

@@ -98,4 +98,22 @@ describe('VM', function () {
       done()
     })
   })
+
+  it('Should support es6 import statements', function (done) {
+    var source = 'import _ from \'lodash\'\nlet fn = (msg) => msg\nreturn fn(_.toUpper(message))'
+    var context = { message: 'test' }
+    var transform = function (code) {
+      var out = babel.transform(code, {
+        presets: ['es2015', 'stage-2'],
+        plugins: ['transform-runtime']
+      }).code
+      // console.log(out)
+      return out
+    }
+    sbx.vm(source, { context, transform, parseImports: true, lockdown: false }, function (err, ctx) {
+      if (err) return done(err)
+      if (ctx._result !== 'TEST') return done(new Error('invalid context value'))
+      done()
+    })
+  })
 })

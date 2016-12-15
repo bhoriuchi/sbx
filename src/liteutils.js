@@ -71,3 +71,19 @@ export function circular (obj, value = '[Circular]') {
   if (!obj) throw new Error('circular requires an object to examine')
   return circularEx(obj, value)
 }
+
+export function union () {
+  let args = [ ...arguments ]
+  if (!args.length) return []
+
+  try {
+    let u = args.reduce((prev, cur) => {
+      if (!isArray(prev) || !isArray(cur)) return []
+      return prev.concat(cur)
+    }, [])
+
+    return [ ...new Set(u) ]
+  } catch (err) {
+    return []
+  }
+}

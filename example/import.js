@@ -27,3 +27,20 @@ while (match) {
 }
 
 console.log(code.join('\n'))
+
+console.log('----')
+
+var rx2 = /\s?(let|var)?\s*(.*)\s+=\s+require\(\s*['"].*['"]\s*\).*/gm
+
+var source2 = "var blah = require('stuff');\n" +
+  "let event = require('events').EventEmiter\n" +
+  "ok = require('stuff')"
+
+var match2 = rx2.exec(source2)
+
+while (match2) {
+  if (match2.length && match2.length > 2) {
+    console.log(match2[2])
+  }
+  match2 = rx2.exec(source2)
+}
