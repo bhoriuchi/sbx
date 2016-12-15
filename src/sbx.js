@@ -40,7 +40,7 @@ util.inherits(PromiseTimeoutError, Error)
  */
 function getModules (source) {
 	let modules = []
-	let rx = /(\w+)\s*=\s*require\([\'\"]([A-Za-z0-9-_.\/!@]+)[\'\"]\);?/g
+	// let rx = /(\w+)\s*=\s*require\([\'\"]([A-Za-z0-9-_.\/!@]+)[\'\"]\).*?/g
 	let match = rx.exec(source)
 
 	while (match) {
@@ -48,6 +48,30 @@ function getModules (source) {
 		match = rx.exec(source)
 	}
 	return modules
+}
+
+function getImports (source) {
+  let [ modules, imports ] = [ [], [] ]
+  let rx = /^import\s+(.*)\s+from.*['"]$/gm
+  let match = rx.exec(source)
+
+  while (match) {
+    if (match.length && match.length > 1) {
+      imports.push(match[0])
+      _.forEach(match[1].replace(/^{(.*)}$/, '$1').split(','), (v) => {
+        let varName = v.trim().replace(/.*as\s+(.*)/, '$1')
+        if (varName.length) modules.push(varName)
+      })
+    }
+    match = rx.exec(source)
+  }
+
+  return {
+    imports: imports.join('\n'),
+    source: source.replace(rx, ''),
+    modules,
+    imports
+  }
 }
 
 /**
