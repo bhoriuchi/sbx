@@ -355,7 +355,7 @@ function vm(source, options, callback) {
       // parse import statements
       if (options.parseImports) {
         var i = getImports(source);
-        importStr = i.imports;
+        importStr = options.lockdown ? '' : i.imports;
         source = i.source;
         modules = union(modules, i.modules);
       }

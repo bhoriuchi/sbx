@@ -27,9 +27,9 @@ Run untrusted code as a VM in a child process
 * [`options`] [`{Object}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object) - Options hash
   * [`context`] [`{Object}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object) - Hash of key/value pairs that will be passed to the vm and are available to the untrusted code. *previously `variables`*
   * [`lockdown=true`] [`{Boolean}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) - If false, require statements will be allowed in order to use external modules
-  * [`timeout`] [`{Number}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number) - Time in miliseconds before the VM times out
+  * [`timeout`] [`{Number}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number) - Time in milliseconds before the VM times out
   * [`transform`] [`{Function}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function) - A function with the signature `transform (code, options)` that should return a string of transformed code. This can be used to transform `ES6` code using `babel` *see example*
-  * [`parseImports=false`] [`{Boolean}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) - Parse es6+ import statements
+  * [`parseImports=false`] [`{Boolean}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) - Parse ES6+ import statements. Should be used with an ES6 source transform function and `lockdown=false`
 * [`callback`] [`{Function}`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function) - Error first callback with signature `callback(error, context)`
 
 ##### Returns
